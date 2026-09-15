@@ -69,4 +69,12 @@ public class AdminUser {
     public void setEnabled(boolean enabled) {
         this.enabled = enabled;
     }
+
+    public void setRole(AdminRole role) {
+        this.role = role;
+    }
+
+    public void setPasswordHash(String passwordHash) {
+        this.passwordHash = passwordHash;
+    }
 }

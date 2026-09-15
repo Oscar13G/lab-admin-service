@@ -1,5 +1,6 @@
 package derfe.crypto.lab.service.admin;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
@@ -11,24 +12,23 @@ public class AdminUserInitializer implements CommandLineRunner {
     private final AdminUserService adminUserService;
     private final PasswordEncoder passwordEncoder;
 
+    private final String username;
+    private final String password;
+
     public AdminUserInitializer(
             AdminUserService adminUserService,
-            PasswordEncoder passwordEncoder) {
+            PasswordEncoder passwordEncoder,
+            @Value("${ADMIN_USERNAME}") String username,
+            @Value("${ADMIN_PASSWORD}") String password) {
 
         this.adminUserService = adminUserService;
         this.passwordEncoder = passwordEncoder;
+        this.username = username;
+        this.password = password;
     }
 
     @Override
     public void run(String... args) {
-
-        String username = System.getenv("ADMIN_USERNAME");
-        String password = System.getenv("ADMIN_PASSWORD");
-
-        // Si no existen las variables, no se crea ningún usuario.
-        if (username == null || password == null) {
-            return;
-        }
 
         // Evita crear el mismo usuario más de una vez.
         if (adminUserService.findByUsername(username).isPresent()) {

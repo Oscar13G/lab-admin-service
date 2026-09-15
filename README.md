@@ -51,9 +51,16 @@ git status
 
 ## Preparación del entorno
 
-El proyecto utiliza variables de entorno para permitir que cada desarrollador tenga configuraciones locales diferentes sin modificar los archivos compartidos del repositorio.
+El proyecto utiliza un único archivo `.env` para centralizar la configuración local de cada desarrollador.
 
-Crear el archivo local de variables de entorno a partir de la plantilla:
+El mismo archivo es utilizado por:
+
+- Docker Compose para configurar PostgreSQL.
+- Spring Boot para configurar la conexión a la base de datos.
+- Spring Security para la configuración JWT.
+- El inicializador del usuario administrador.
+
+Crear el archivo local a partir de la plantilla:
 
 ### Windows PowerShell
 
@@ -61,57 +68,38 @@ Crear el archivo local de variables de entorno a partir de la plantilla:
 Copy-Item .env.example .env
 ```
 
-El archivo `.env` es local y no debe agregarse al repositorio.
+### Generar JWT_SECRET
 
-La plantilla `.env.example` contiene las variables necesarias para configurar el entorno.
+Cada desarrollador debe generar su propio secreto para la firma de los tokens JWT.
 
-Ejemplo:
+En Windows PowerShell se puede generar un valor aleatorio de 256 bits codificado en Base64 con:
 
-```env
-POSTGRES_DB=labdb
-POSTGRES_USER=labuser
-POSTGRES_PASSWORD=labpassword
-
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=labdb
-DB_USER=labuser
-DB_PASSWORD=labpassword
+```powershell
+$bytes = New-Object byte[] 32
+$rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+$rng.GetBytes($bytes)
+[Convert]::ToBase64String($bytes)
+$rng.Dispose()
 ```
 
-Cada desarrollador puede modificar su archivo `.env` de acuerdo con su entorno local.
-
-Por ejemplo, si el puerto `5432` ya está ocupado:
+El resultado debe colocarse en el archivo `.env`:
 
 ```env
-DB_PORT=5433
+JWT_SECRET=VALOR_GENERADO
 ```
 
-Esto permite utilizar configuraciones locales diferentes sin modificar `application.yaml` ni generar conflictos al integrar ramas.
+El valor real de `JWT_SECRET` no debe almacenarse en `.env.example` ni subirse al repositorio.
 
 ## Configuración de PostgreSQL
 
-La aplicación utiliza variables de entorno para construir la conexión con PostgreSQL.
-
-La configuración de Spring Boot utiliza el siguiente esquema:
-
-```yaml
-spring:
-  datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:labdb}
-    username: ${DB_USER:labuser}
-    password: ${DB_PASSWORD:labpassword}
-```
-
-Si una variable no está definida, Spring Boot utiliza el valor indicado después de `:` como valor por defecto.
-
-Por ejemplo:
+Docker Compose y Spring Boot utilizan las mismas propiedades definidas en `.env`:
 
 ```text
-DB_HOST -> localhost
-DB_PORT -> 5432
-DB_NAME -> labdb
-DB_USER -> labuser
+DB_HOST
+DB_PORT
+DB_NAME
+DB_USER
+DB_PASSWORD
 ```
 
 ## Levantar PostgreSQL
@@ -189,59 +177,35 @@ Esto permite que un desarrollador pueda clonar el proyecto y generar la estructu
 
 ## Autenticación
 
-Actualmente se encuentra implementado el flujo de autenticación de usuarios.
+Actualmente se encuentra implementado el flujo inicial de autenticación de usuarios administrativos.
 
 El login permite validar:
 
 - Conectividad con el backend.
 - Conectividad con PostgreSQL.
-- Existencia y estado del usuario.
+- Existencia y estado del usuario administrativo.
+- Validación de contraseña mediante BCrypt.
 - Autenticación mediante Spring Security.
-- Generación del token de sesión.
+- Obtención del rol asociado al usuario.
 
-El manejo del token de sesión y su utilización para proteger las demás peticiones se encuentra actualmente en desarrollo.
-
-Por este motivo, durante esta etapa la prueba funcional principal después de levantar el proyecto es el **login**.
-
-## Flujo para levantar el proyecto desde cero
-
-El flujo recomendado para un nuevo desarrollador es:
+El endpoint disponible actualmente es:
 
 ```text
-git clone
-    |
-    v
-crear .env desde .env.example
-    |
-    v
-configurar variables locales
-    |
-    v
-docker compose up -d
-    |
-    v
-.\mvnw.cmd clean package
-    |
-    v
-.\mvnw.cmd spring-boot:run
-    |
-    v
-probar login
+POST /auth/login
 ```
 
-Si Maven devuelve:
+Ejemplo de solicitud:
 
-```text
-BUILD SUCCESS
+```json
+{
+  "username": "admin",
+  "password": "PASSWORD_CONFIGURADO_LOCALMENTE"
+}
 ```
 
-y Spring Boot muestra:
+Una autenticación correcta devuelve actualmente el usuario, su rol y el resultado del login.
 
-```text
-Started LabAdminServiceApplication
-```
-
-el entorno base se encuentra correctamente configurado.
+La generación y validación de JWT para autenticar las siguientes peticiones se encuentra en desarrollo.
 
 ## Trabajo con Git
 
@@ -296,7 +260,7 @@ De esta forma los cambios particulares del entorno no se propagan accidentalment
 Actualmente se ha validado:
 
 - Clonado limpio del repositorio.
-- Configuración local mediante variables de entorno.
+- Configuración local centralizada mediante archivo .env.
 - PostgreSQL ejecutándose mediante Docker.
 - Compilación mediante Maven Wrapper.
 - Ejecución de pruebas durante el build.
@@ -310,6 +274,6 @@ Actualmente se ha validado:
 
 Actualmente en desarrollo:
 
-- Manejo del token de sesión.
+- Generación de tokens JWT.
 - Validación del token en las peticiones protegidas.
 - Continuación de los endpoints administrativos.

@@ -52,12 +52,40 @@ public class GrupoService {
         return Optional.of(grupoRepository.save(grupo));
     }
 
-    public boolean deleteGrupo(Long id) {
-        if (!grupoRepository.existsById(id)) {
-            return false;
-        }
-
-        grupoRepository.deleteById(id);
-        return true;
+   public boolean deleteGrupo(Long id) {
+    if (!grupoRepository.existsById(id)) {
+        return false;
     }
+
+    grupoRepository.deleteById(id);
+    return true;
+}
+
+public Optional<Grupo> updateCriptoServ(Long id, boolean enabled) {
+
+    Optional<Grupo> optionalGrupo = grupoRepository.findById(id);
+
+    if (optionalGrupo.isEmpty()) {
+        return Optional.empty();
+    }
+
+    Grupo grupo = optionalGrupo.get();
+    grupo.setCriptoServ(enabled);
+
+    return Optional.of(grupoRepository.save(grupo));
+}
+
+public Optional<Grupo> updateCertificadoServ(Long id, boolean enabled) {
+
+    Optional<Grupo> optionalGrupo = grupoRepository.findById(id);
+
+    if (optionalGrupo.isEmpty()) {
+        return Optional.empty();
+    }
+
+    Grupo grupo = optionalGrupo.get();
+    grupo.setCertificadoServ(enabled);
+
+    return Optional.of(grupoRepository.save(grupo));
+}
 }

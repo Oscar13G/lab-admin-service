@@ -20,10 +20,16 @@ import jakarta.validation.Valid;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 // Endpoints para administrar usuarios del Admin Service.
 @RestController
 @RequestMapping("/admin/users")
 public class AdminUserController {
+
+    private static final Logger auditLogger =
+        LoggerFactory.getLogger("AUDIT");
 
     private final AdminUserService adminUserService;
 
@@ -54,9 +60,18 @@ public class AdminUserController {
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     public ResponseEntity<AdminUserResponse> create(
-            @Valid @RequestBody AdminUserCreateRequest request) {
+            @Valid @RequestBody AdminUserCreateRequest request, 
+            @AuthenticationPrincipal Jwt jwt) {
 
         AdminUserResponse createdUser = adminUserService.create(request);
+
+        auditLogger.info(
+            "USER_CREATED actor={} id={} username={} role={}",
+            jwt.getSubject(),
+            createdUser.getId(),
+            createdUser.getUsername(),
+            createdUser.getRole()
+        );
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
@@ -68,11 +83,27 @@ public class AdminUserController {
     @PatchMapping("/{id}/status")
     public ResponseEntity<AdminUserResponse> updateStatus(
             @PathVariable Long id,
-            @RequestParam boolean enabled) {
+            @RequestParam boolean enabled,
+            @AuthenticationPrincipal Jwt jwt) {
+    
 
-        return adminUserService.updateStatus(id, enabled)
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
+        AdminUserResponse updatedUser = adminUserService
+            .updateStatus(id, enabled)
+            .orElse(null);
+
+        if (updatedUser == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        auditLogger.info(
+                "USER_STATUS_CHANGED actor={} id={} username={} enabled={}",
+                jwt.getSubject(),
+                updatedUser.getId(),
+                updatedUser.getUsername(),
+                updatedUser.isEnabled()
+        );
+
+        return ResponseEntity.ok(updatedUser);
     }
 
     // Modifica el rol de un usuario administrativo.
@@ -80,11 +111,26 @@ public class AdminUserController {
     @PatchMapping("/{id}/role")
     public ResponseEntity<AdminUserResponse> updateRole(
         @PathVariable Long id,
-        @Valid @RequestBody AdminUserRoleRequest request) {
+        @Valid @RequestBody AdminUserRoleRequest request,
+        @AuthenticationPrincipal Jwt jwt) {
 
-        return adminUserService.updateRole(id, request.getRole())
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
+        AdminUserResponse updatedUser = adminUserService
+        .updateRole(id, request.getRole())
+        .orElse(null);
+
+        if (updatedUser == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        auditLogger.info(
+                "USER_ROLE_CHANGED actor={} id={} username={} role={}",
+                jwt.getSubject(),
+                updatedUser.getId(),
+                updatedUser.getUsername(),
+                updatedUser.getRole()
+        );
+
+        return ResponseEntity.ok(updatedUser);
     }
 
     // Modifica la contraseña de un usuario administrativo.
@@ -92,11 +138,25 @@ public class AdminUserController {
     @PatchMapping("/{id}/password")
     public ResponseEntity<AdminUserResponse> updatePassword(
             @PathVariable Long id,
-            @Valid @RequestBody AdminUserPasswordRequest request) {
+            @Valid @RequestBody AdminUserPasswordRequest request,
+            @AuthenticationPrincipal Jwt jwt) {
 
-        return adminUserService.updatePassword(id, request.getPassword())
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
+        AdminUserResponse updatedUser = adminUserService
+        .updatePassword(id, request.getPassword())
+        .orElse(null);
+
+        if (updatedUser == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        auditLogger.info(
+                "USER_PASSWORD_CHANGED actor={} id={} username={}",
+                jwt.getSubject(),
+                updatedUser.getId(),
+                updatedUser.getUsername()
+        );
+
+        return ResponseEntity.ok(updatedUser);
     }
 
     // Elimina un usuario administrativo.
@@ -117,10 +177,25 @@ public class AdminUserController {
         }
 
         if (userToDelete.getUsername().equals(currentUsername)) {
+
+            auditLogger.warn(
+                    "USER_DELETE_DENIED actor={} id={} username={} reason=SELF_DELETE",
+                    currentUsername,
+                    userToDelete.getId(),
+                    userToDelete.getUsername()
+            );
+
             return ResponseEntity.status(HttpStatus.CONFLICT).build();
         }
 
         adminUserService.delete(id);
+
+        auditLogger.info(
+            "USER_DELETED actor={} id={} username={}",
+            currentUsername,
+            userToDelete.getId(),
+            userToDelete.getUsername()
+        );
 
         return ResponseEntity.noContent().build();
     }

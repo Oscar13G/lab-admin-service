@@ -11,6 +11,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.server.ResponseStatusException;
 
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -95,6 +97,27 @@ public class GlobalExceptionHandler {
     return ResponseEntity
             .status(exception.getStatusCode())
             .build();
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<Void> handleTypeMismatch(
+            MethodArgumentTypeMismatchException exception,
+            HttpServletRequest request,
+            Authentication authentication) {
+
+    String actor = authentication != null
+            ? authentication.getName()
+            : "anonymous";
+
+    auditLogger.warn(
+            "INVALID_PARAMETER actor={} method={} path={} parameter={}",
+            actor,
+            request.getMethod(),
+            request.getRequestURI(),
+            exception.getName()
+    );
+
+    return ResponseEntity.badRequest().build();
     }
 
     // Cualquier error inesperado que no haya sido controlado arriba.

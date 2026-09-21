@@ -17,10 +17,18 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
+
 @RestController
 @RequestMapping("/groups")
 @PreAuthorize("hasAnyRole('ADMIN', 'SUPERADMIN')")
 public class GrupoController {
+
+    private static final Logger auditLogger =
+        LoggerFactory.getLogger("AUDIT");
 
     private final GrupoService grupoService;
 
@@ -57,52 +65,99 @@ public class GrupoController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Grupo createGrupo(@RequestBody Grupo grupo) {
-        return grupoService.createGrupo(
+    public Grupo createGrupo(
+            @RequestBody Grupo grupo,
+            @AuthenticationPrincipal Jwt jwt) {
+
+        Grupo createdGrupo = grupoService.createGrupo(
                 grupo.getName(),
                 grupo.isCriptoServ(),
                 grupo.isCertificadoServ()
         );
+
+        auditLogger.info(
+                "GROUP_CREATED actor={} id={} name={} criptoServ={} certificadoServ={}",
+                jwt.getSubject(),
+                createdGrupo.getId(),
+                createdGrupo.getName(),
+                createdGrupo.isCriptoServ(),
+                createdGrupo.isCertificadoServ()
+        );
+
+        return createdGrupo;
     }
 
-   @PatchMapping("/{id}/cripto-serv")
-public Grupo updateCriptoServ(
-        @PathVariable Long id,
-        @RequestParam boolean enabled) {
+    @PatchMapping("/{id}/cripto-serv")
+    public Grupo updateCriptoServ(
+            @PathVariable Long id,
+            @RequestParam boolean enabled,
+            @AuthenticationPrincipal Jwt jwt) {
 
-    return grupoService.updateCriptoServ(id, enabled)
-            .orElseThrow(() ->
-                    new ResponseStatusException(
-                            HttpStatus.NOT_FOUND,
-                            "Grupo no encontrado"
-                    )
-            );
-        }
-@PatchMapping("/{id}/certificado-serv")
-public Grupo updateCertificadoServ(
-        @PathVariable Long id,
-        @RequestParam boolean enabled) {
+        Grupo updatedGrupo = grupoService.updateCriptoServ(id, enabled)
+                .orElseThrow(() ->
+                        new ResponseStatusException(
+                                HttpStatus.NOT_FOUND,
+                                "Grupo no encontrado"
+                        )
+                );
 
-    return grupoService.updateCertificadoServ(id, enabled)
-            .orElseThrow(() ->
-                    new ResponseStatusException(
-                            HttpStatus.NOT_FOUND,
-                            "Grupo no encontrado"
-                    )
-            );
-        }
+        auditLogger.info(
+                "GROUP_CRYPTO_SERVICE_CHANGED actor={} id={} name={} enabled={}",
+                jwt.getSubject(),
+                updatedGrupo.getId(),
+                updatedGrupo.getName(),
+                updatedGrupo.isCriptoServ()
+        );
+
+        return updatedGrupo;
+    }
+
+    @PatchMapping("/{id}/certificado-serv")
+    public Grupo updateCertificadoServ(
+            @PathVariable Long id,
+            @RequestParam boolean enabled,
+            @AuthenticationPrincipal Jwt jwt) {
+
+        Grupo updatedGrupo = grupoService.updateCertificadoServ(id, enabled)
+                .orElseThrow(() ->
+                        new ResponseStatusException(
+                                HttpStatus.NOT_FOUND,
+                                "Grupo no encontrado"
+                        )
+                );
+
+        auditLogger.info(
+                "GROUP_CERTIFICATE_SERVICE_CHANGED actor={} id={} name={} enabled={}",
+                jwt.getSubject(),
+                updatedGrupo.getId(),
+                updatedGrupo.getName(),
+                updatedGrupo.isCertificadoServ()
+        );
+
+        return updatedGrupo;
+    }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteGrupo(@PathVariable Long id) {
+    public void deleteGrupo(
+            @PathVariable Long id,
+            @AuthenticationPrincipal Jwt jwt) {
 
-        boolean deleted = grupoService.deleteGrupo(id);
+        Grupo grupo = grupoService.findById(id)
+                .orElseThrow(() ->
+                        new ResponseStatusException(
+                                HttpStatus.NOT_FOUND,
+                                "Grupo no encontrado"
+                        )
+                );
 
-        if (!deleted) {
-            throw new ResponseStatusException(
-                    HttpStatus.NOT_FOUND,
-                    "Grupo no encontrado"
-            );
-        }
+        grupoService.deleteGrupo(id);
+
+        auditLogger.info(
+                "GROUP_DELETED actor={} id={} name={}",
+                jwt.getSubject(),
+                grupo.getId(),
+                grupo.getName()
+        );
     }
 }

@@ -24,7 +24,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 
 @RestController
 @RequestMapping("/groups")
-@PreAuthorize("hasAnyRole('ADMIN', 'SUPERADMIN')")
+@PreAuthorize("hasAnyRole('ADMIN', 'FUNCIONAL')")
 public class GrupoController {
 
     private static final Logger auditLogger =

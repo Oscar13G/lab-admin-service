@@ -1,4 +1,4 @@
-CREATE TABLE consumer_grupo (
+CREATE TABLE IF NOT EXISTS consumer_grupo (
     consumer_id BIGINT NOT NULL,
     grupo_id BIGINT NOT NULL,
 

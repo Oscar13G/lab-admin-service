@@ -13,12 +13,20 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.DeleteMapping;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
+
 import java.util.List;
 
 // Expone operaciones HTTP relacionadas con los consumidores.
 @RestController
 @RequestMapping("/consumers")
 public class ConsumerController {
+
+    private static final Logger auditLogger =
+        LoggerFactory.getLogger("AUDIT");
 
     private final ConsumerService consumerService;
 
@@ -30,9 +38,21 @@ public class ConsumerController {
     // Crea un nuevo consumidor a partir de los datos recibidos.
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Consumer createConsumer(@RequestBody Consumer consumer) {
+    public Consumer createConsumer(
+            @RequestBody Consumer consumer,
+            @AuthenticationPrincipal Jwt jwt) {
 
-        return consumerService.createConsumer(consumer.getName());
+        Consumer createdConsumer =
+                consumerService.createConsumer(consumer.getName());
+
+        auditLogger.info(
+                "CONSUMER_CREATED actor={} id={} name={}",
+                jwt.getSubject(),
+                createdConsumer.getId(),
+                createdConsumer.getName()
+        );
+
+        return createdConsumer;
     }
 
     // Devuelve todos los consumidores registrados.
@@ -58,28 +78,51 @@ public class ConsumerController {
     @PatchMapping("/{id}/status")
     public Consumer updateStatus(
             @PathVariable Long id,
-            @RequestParam boolean enabled) {
-        return consumerService.updateStatus(id, enabled)
+            @RequestParam boolean enabled,
+            @AuthenticationPrincipal Jwt jwt) {
+
+        Consumer updatedConsumer = consumerService.updateStatus(id, enabled)
                 .orElseThrow(() ->
                         new ResponseStatusException(
                                 HttpStatus.NOT_FOUND,
                                 "Consumer no encontrado"
                         )
                 );
+
+        auditLogger.info(
+                "CONSUMER_STATUS_CHANGED actor={} id={} name={} enabled={}",
+                jwt.getSubject(),
+                updatedConsumer.getId(),
+                updatedConsumer.getName(),
+                updatedConsumer.isEnabled()
+        );
+
+        return updatedConsumer;
     }
+
     // Elimina un consumidor existente.
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteConsumer(@PathVariable Long id) {
+    public void deleteConsumer(
+            @PathVariable Long id,
+            @AuthenticationPrincipal Jwt jwt) {
 
-            boolean deleted = consumerService.deleteConsumer(id);
+        Consumer consumer = consumerService.findById(id)
+                .orElseThrow(() ->
+                        new ResponseStatusException(
+                                HttpStatus.NOT_FOUND,
+                                "Consumer no encontrado"
+                        )
+                );
 
-            if (!deleted) {
-            throw new ResponseStatusException(
-            HttpStatus.NOT_FOUND,
-            "Consumer no encontrado"
-            );
-            }
+        consumerService.deleteConsumer(id);
+
+        auditLogger.info(
+                "CONSUMER_DELETED actor={} id={} name={}",
+                jwt.getSubject(),
+                consumer.getId(),
+                consumer.getName()
+        );
     }
 }
 

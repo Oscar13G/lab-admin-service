@@ -22,6 +22,11 @@ public class ConsumerService {
         return consumerRepository.findByName(name);
     }
 
+    // Busca un consumidor por su identificador.
+    public Optional<Consumer> findById(Long id) {
+        return consumerRepository.findById(id);
+    }
+
     // Obtiene todos los consumidores registrados.
     public List<Consumer> findAll() {
         return consumerRepository.findAll();

@@ -73,8 +73,16 @@ public class SecurityConfig {
                 // El login debe permanecer público para poder obtener el JWT.
                 .requestMatchers("/auth/login").permitAll()
 
-                // La administración de consumidores requiere el rol ADMIN.
-                .requestMatchers("/consumers/**").hasRole("ADMIN")
+                // Documentación OpenAPI / Swagger.
+                // Springdoc solo crea estas rutas cuando SWAGGER_ENABLED=true.
+                .requestMatchers(
+                    "/swagger-ui/**",
+                    "/swagger-ui.html",
+                    "/v3/api-docs/**"
+                ).permitAll()
+
+                .requestMatchers("/consumers/**")
+                    .hasAnyRole("ADMIN", "FUNCIONAL")
 
                 // El resto de endpoints requiere al menos un usuario autenticado.
                 .anyRequest().authenticated()

@@ -14,7 +14,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/consumer-groups")
-@PreAuthorize("hasAnyRole('ADMIN', 'SUPERADMIN')")
+@PreAuthorize("hasAnyRole('ADMIN', 'FUNCIONAL')")
 public class ConsumerGrupoController {
 
     private final ConsumerGrupoService consumerGrupoService;
